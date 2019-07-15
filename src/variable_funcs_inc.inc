@@ -3,7 +3,7 @@
 #endif
 #include "settings.inc"
 subroutine ROUTINE(assign_set,VAR)(this,rhs,dealloc)
-  type(var), intent(inout) :: this
+  type(variable_t), intent(inout) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical, intent(in), optional :: dealloc
   logical :: ldealloc
@@ -25,14 +25,14 @@ subroutine ROUTINE(assign_set,VAR)(this,rhs,dealloc)
   ALLOC(p%p,rhs) ! allocate space
   p%p = rhs ! copy data over
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
-  this%enc = transfer(p, local_enc_type) ! transfer pointer type to the encoding
+  this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
   ! We already have shipped it
   nullify(p%p)
 end subroutine ROUTINE(assign_set,VAR)
 
 subroutine ROUTINE(assign_get,VAR)(lhs,this,success)
   VAR_TYPE, intent(out)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical, intent(out), optional :: success
   logical :: lsuccess
   type :: pt
@@ -59,7 +59,7 @@ end subroutine ROUTINE(assign_get,VAR)
 
 subroutine ROUTINE(associate_get,VAR)(lhs,this,dealloc,success)
   VAR_TYPE, pointer DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical, intent(in), optional :: dealloc
   logical, intent(out), optional :: success
   logical :: ldealloc, lsuccess
@@ -82,7 +82,7 @@ subroutine ROUTINE(associate_get,VAR)(lhs,this,dealloc,success)
   lhs => p%p
 end subroutine ROUTINE(associate_get,VAR)
 subroutine ROUTINE(associate_set,VAR)(this,rhs,dealloc)
-  type(var), intent(inout) :: this
+  type(variable_t), intent(inout) :: this
 #ifdef COMMENTS
   ! Setting the intent(inout) ensures that no constants
   ! will be able to be passed.
@@ -109,33 +109,35 @@ subroutine ROUTINE(associate_set,VAR)(this,rhs,dealloc)
   this%t = STR(VAR)
   p%p => rhs
   allocate(this%enc(size(transfer(p, local_enc_type)))) ! allocate encoding
-  this%enc = transfer(p, local_enc_type) ! transfer pointer type to the encoding
+  this%enc(:) = transfer(p, local_enc_type) ! transfer pointer type to the encoding
 end subroutine ROUTINE(associate_set,VAR)
 
 pure function ROUTINE(associatd_l,VAR)(lhs,this) result(ret)
   VAR_TYPE, pointer DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   type :: pt
-    VAR_TYPE, pointer DIMS :: p => null()
+    VAR_TYPE, pointer DIMS :: p
   end type
   type(pt) :: p
   ret = this%t == STR(VAR)
-  if (ret) then	
+  if (ret) then
+     nullify(p%p)
      p = transfer(this%enc,p)
      ret = associated(lhs,p%p)
   endif
 end function ROUTINE(associatd_l,VAR)
 pure function ROUTINE(associatd_r,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, pointer DIMS :: rhs
   logical :: ret
   type :: pt
-    VAR_TYPE, pointer DIMS :: p => null()
+    VAR_TYPE, pointer DIMS :: p
   end type
   type(pt) :: p
   ret = this%t == STR(VAR)
   if (ret) then	
+     nullify(p%p)
      p = transfer(this%enc,p)
      ret = associated(p%p,rhs)
   endif
@@ -144,7 +146,7 @@ end function ROUTINE(associatd_r,VAR)
 ! All boolean functions
 #ifdef BOOLEANS
 function ROUTINE(eq_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = this%t == STR(VAR)
@@ -154,13 +156,13 @@ end function ROUTINE(eq_l,VAR)
 
 function ROUTINE(eq_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = this == lhs
 end function ROUTINE(eq_r,VAR)
 
 function ROUTINE(ne_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = .not. this == rhs
@@ -168,13 +170,13 @@ end function ROUTINE(ne_l,VAR)
 
 function ROUTINE(ne_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = .not. this == lhs
 end function ROUTINE(ne_r,VAR)
 
 function ROUTINE(gt_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = this%t == STR(VAR)
@@ -183,7 +185,7 @@ function ROUTINE(gt_l,VAR)(this,rhs) result(ret)
 end function ROUTINE(gt_l,VAR)
 function ROUTINE(gt_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = this%t == STR(VAR)
   if (.not. ret) return
@@ -191,40 +193,40 @@ function ROUTINE(gt_r,VAR)(lhs,this) result(ret)
 end function ROUTINE(gt_r,VAR)
 
 function ROUTINE(lt_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = rhs > this
 end function ROUTINE(lt_l,VAR)
 function ROUTINE(lt_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = this > lhs
 end function ROUTINE(lt_r,VAR)
 
 function ROUTINE(ge_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this 
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = .not. this < rhs
 end function ROUTINE(ge_l,VAR)
 function ROUTINE(ge_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = .not. lhs < this
 end function ROUTINE(ge_r,VAR)
 
 function ROUTINE(le_l,VAR)(this,rhs) result(ret)
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   VAR_TYPE, intent(in)DIMS :: rhs
   logical :: ret
   ret = .not. this > rhs
 end function ROUTINE(le_l,VAR)
 function ROUTINE(le_r,VAR)(lhs,this) result(ret)
   VAR_TYPE, intent(in)DIMS :: lhs
-  type(var), intent(in) :: this
+  type(variable_t), intent(in) :: this
   logical :: ret
   ret = .not. lhs > this
 end function ROUTINE(le_r,VAR)
